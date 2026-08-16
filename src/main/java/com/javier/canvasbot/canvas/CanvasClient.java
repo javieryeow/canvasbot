@@ -52,21 +52,30 @@ public class CanvasClient {
     }
 
     public List<CanvasPlannerItem> getPlannerItems(String startDate, String endDate) {
+        List<CanvasPlannerItem> allItems = new ArrayList<>();
         URI uri = UriComponentsBuilder
                 .fromPath("/api/v1/planner/items")
                 .queryParam("start_date", startDate)
                 .queryParam("end_date", endDate)
                 .queryParam("filter", "incomplete_items")
+                .queryParam("per_page", 100)
                 .build()
                 .toUri();
-        CanvasPlannerItem[] items = restClient.get()
-                .uri(uri)
-                .retrieve()
-                .body(CanvasPlannerItem[].class);
-        if (items == null) {
-            return List.of();
+        while (uri != null) {
+            ResponseEntity<CanvasPlannerItem[]> response = restClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .toEntity(CanvasPlannerItem[].class);
+
+            CanvasPlannerItem[] items = response.getBody();
+            if (items != null) {
+                allItems.addAll(Arrays.asList(items));
+            }
+            uri = getNextPageUri(
+                    response.getHeaders().getFirst("Link")
+            );
         }
-        return Arrays.asList(items);
+        return allItems;
     }
 
     private URI getNextPageUri(String linkHeader) {
