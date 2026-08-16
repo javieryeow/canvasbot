@@ -32,6 +32,8 @@ public class CanvasClient {
         URI uri = UriComponentsBuilder
                 .fromPath("/api/v1/courses")
                 .queryParam("enrollment_state", "active")
+                .queryParam("include[]", "sections")
+                .queryParam("include[]", "term")
                 .queryParam("per_page", 100)
                 .build()
                 .toUri();
