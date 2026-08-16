@@ -7,27 +7,32 @@ import org.springframework.web.client.RestClient;
 @Service
 public class TelegramService {
     private final RestClient restClient;
-    private final String botToken;
     private final String chatId;
+
+    private static final int MAX_MESSAGE_LENGTH = 4000;
+    private static final String TELEGRAM_API_URL =
+            "https://api.telegram.org/bot";
 
     public TelegramService(
             @Value("${telegram.bot.token}") String botToken,
             @Value("${telegram.chat.id}") String chatId
     ) {
-        this.restClient = RestClient.create();
-        this.botToken = botToken;
+        this.restClient = RestClient.builder()
+                .baseUrl(TELEGRAM_API_URL + botToken)
+                .build();
         this.chatId = chatId;
     }
-
     public void sendMessage(String text) {
-        String url = "https://api.telegram.org/bot"
-                + botToken
-                + "/sendMessage";
-        SendMessageRequest request = new SendMessageRequest(chatId, text);
-        restClient.post()
-                .uri(url)
-                .body(request)
-                .retrieve()
-                .toBodilessEntity();
+        for (int start = 0; start < text.length(); start += MAX_MESSAGE_LENGTH) {
+            int end = Math.min(start + MAX_MESSAGE_LENGTH, text.length());
+            String chunk = text.substring(start, end);
+            SendMessageRequest request =
+                    new SendMessageRequest(chatId, chunk);
+            restClient.post()
+                    .uri("/sendMessage")
+                    .body(request)
+                    .retrieve()
+                    .toBodilessEntity();
+        }
     }
 }

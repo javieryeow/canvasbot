@@ -1,13 +1,17 @@
 package com.javier.canvasbot.canvas;
 
+import com.javier.canvasbot.canvas.dto.CanvasPlannerItem;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import com.javier.canvasbot.canvas.dto.CanvasCourse;
+
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 public class CanvasClient {
@@ -25,24 +29,56 @@ public class CanvasClient {
 
     public List<CanvasCourse> getCourses() {
         List<CanvasCourse> allCourses = new ArrayList<>();
-        String url = "/api/v1/courses"
-                + "?enrollment_state=active"
-                + "&per_page=100";
-        while (url != null) {
+        URI uri = UriComponentsBuilder
+                .fromPath("/api/v1/courses")
+                .queryParam("enrollment_state", "active")
+                .queryParam("include[]", "sections")
+                .queryParam("include[]", "term")
+                .queryParam("per_page", 100)
+                .build()
+                .toUri();
+        while (uri != null) {
             ResponseEntity<CanvasCourse[]> response = restClient.get()
-                    .uri(url)
+                    .uri(uri)
                     .retrieve()
                     .toEntity(CanvasCourse[].class);
             CanvasCourse[] courses = response.getBody();
             if (courses != null) {
                 allCourses.addAll(Arrays.asList(courses));
             }
-            url = getNextPageUrl(response.getHeaders().getFirst("Link"));
+            uri = getNextPageUri(response.getHeaders().getFirst("Link"));
         }
         return allCourses;
     }
 
-    private String getNextPageUrl(String linkHeader) {
+    public List<CanvasPlannerItem> getPlannerItems(String startDate, String endDate) {
+        List<CanvasPlannerItem> allItems = new ArrayList<>();
+        URI uri = UriComponentsBuilder
+                .fromPath("/api/v1/planner/items")
+                .queryParam("start_date", startDate)
+                .queryParam("end_date", endDate)
+                .queryParam("filter", "incomplete_items")
+                .queryParam("per_page", 100)
+                .build()
+                .toUri();
+        while (uri != null) {
+            ResponseEntity<CanvasPlannerItem[]> response = restClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .toEntity(CanvasPlannerItem[].class);
+
+            CanvasPlannerItem[] items = response.getBody();
+            if (items != null) {
+                allItems.addAll(Arrays.asList(items));
+            }
+            uri = getNextPageUri(
+                    response.getHeaders().getFirst("Link")
+            );
+        }
+        return allItems;
+    }
+
+    private URI getNextPageUri(String linkHeader) {
         if (linkHeader == null) {
             return null;
         }
@@ -50,7 +86,9 @@ public class CanvasClient {
             if (link.contains("rel=\"next\"")) {
                 int start = link.indexOf("<") + 1;
                 int end = link.indexOf(">");
-                return link.substring(start, end);
+                return URI.create(
+                        link.substring(start, end)
+                );
             }
         }
         return null;
