@@ -1,5 +1,6 @@
 package com.javier.canvasbot;
 
+import com.javier.canvasbot.canvas.dto.CanvasPlannerItem;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import com.javier.canvasbot.telegram.TelegramService;
@@ -17,20 +18,18 @@ public class CanvasbotApplication {
     }
 
     @Bean
-    CommandLineRunner testCanvas(CanvasClient canvasClient) {
+    CommandLineRunner testPlanner(CanvasClient canvasClient) {
         return args -> {
-            List<CanvasCourse> courses = canvasClient.getCourses();
-            System.out.println("Total courses: " + courses.size());
-            for (CanvasCourse course : courses) {
-                System.out.println(
-                        course.id()
-                                + " | "
-                                + course.courseCode()
-                                + " | "
-                                + course.name()
-                );
+            List<CanvasPlannerItem> items = canvasClient.getPlannerItems(
+                    "2026-08-16",
+                    "2026-10-21"
+            );
+
+            System.out.println("Planner items: " + items.size());
+
+            for (CanvasPlannerItem item : items) {
+                System.out.println(item);
             }
         };
     }
-
 }
